@@ -296,6 +296,48 @@ body {
 }
 
 /* ── EXPORT HINT ── */
+.dl-bar {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px;
+  padding: 20px 24px;
+  width: 540px;
+}
+.dl-title {
+  font-family:'Sora',sans-serif; font-size:11px; font-weight:700;
+  letter-spacing:.14em; text-transform:uppercase;
+  color:rgba(255,255,255,.3);
+}
+.dl-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+.dl-btn {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.1);
+  color: rgba(255,255,255,.7);
+  border-radius: 8px;
+  padding: 8px 6px;
+  font-family:'Sora',sans-serif;
+  font-size: 11px; font-weight: 700;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.dl-btn:hover { background: rgba(34,197,94,.15); border-color:rgba(34,197,94,.3); color:#22c55e; }
+.dl-btn.dl-all {
+  background: rgba(34,197,94,.12);
+  width: 100%;
+  border-color: rgba(34,197,94,.3);
+  color: #22c55e;
+  padding: 10px;
+  font-size: 12px;
+}
+.dl-btn.dl-all:hover { background: rgba(34,197,94,.25); }
+.dl-btn.loading { opacity:.5; pointer-events:none; }
 .hint {
   font-family:'Sora',sans-serif; font-size:11px;
   color:rgba(255,255,255,.2); text-align:center;
@@ -303,6 +345,7 @@ body {
 }
 .hint strong { color:rgba(255,255,255,.4); }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
 
@@ -486,7 +529,20 @@ body {
   <span class="slide-counter" id="counter">1 / 7</span>
 </div>
 
-<p class="hint">← → pour naviguer &nbsp;·&nbsp; <strong>DevTools → 540×540 → Capture screenshot</strong> pour exporter chaque slide en PNG</p>
+<div class="dl-bar" id="dl-bar">
+  <p class="dl-title">Télécharger les slides</p>
+  <button class="dl-btn dl-all" onclick="dlAll()">⬇ Tout télécharger (7 PNG)</button>
+  <div class="dl-grid" id="dl-grid">
+    <button class="dl-btn" onclick="dlSlide(0)">⬇ Slide 1</button>
+    <button class="dl-btn" onclick="dlSlide(1)">⬇ Slide 2</button>
+    <button class="dl-btn" onclick="dlSlide(2)">⬇ Slide 3</button>
+    <button class="dl-btn" onclick="dlSlide(3)">⬇ Slide 4</button>
+    <button class="dl-btn" onclick="dlSlide(4)">⬇ Slide 5</button>
+    <button class="dl-btn" onclick="dlSlide(5)">⬇ Slide 6</button>
+    <button class="dl-btn" onclick="dlSlide(6)">⬇ Slide 7</button>
+  </div>
+  <p class="hint">← → ou swipe pour naviguer &nbsp;·&nbsp; Slides 1080×1080px</p>
+</div>
 
 <script>
 (function() {
@@ -535,6 +591,73 @@ body {
     if (dx > 40) goTo(cur - 1);
   }, {passive:true});
 })();
+
+// ── DOWNLOAD FUNCTIONS ──
+var slideNames = [
+  '01-cover', '02-probleme', '03-regles',
+  '04-erreur', '05-solution', '06-timeline', '07-cta'
+];
+
+function dlSlide(idx) {
+  var slides = document.querySelectorAll('.slide');
+  var slide = slides[idx];
+  var btn = document.querySelectorAll('.dl-btn')[idx];
+
+  // Temporarily show the slide at full resolution
+  btn.classList.add('loading');
+  btn.textContent = '⏳ ...';
+
+  // Use scale 2x for 1080x1080 output
+  html2canvas(slide, {
+    width: 540,
+    height: 540,
+    scale: 2,
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: null,
+    logging: false
+  }).then(function(canvas) {
+    var link = document.createElement('a');
+    link.download = 'onpasse-carousel-' + slideNames[idx] + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    btn.classList.remove('loading');
+    btn.textContent = '✓ Slide ' + (idx + 1);
+    setTimeout(function() { btn.textContent = '⬇ Slide ' + (idx + 1); }, 2000);
+  }).catch(function(e) {
+    btn.classList.remove('loading');
+    btn.textContent = '⬇ Slide ' + (idx + 1);
+    console.error(e);
+  });
+}
+
+async function dlAll() {
+  var btn = document.querySelector('.dl-all');
+  btn.textContent = '⏳ Génération en cours...';
+  btn.classList.add('loading');
+  var slides = document.querySelectorAll('.slide');
+  for (var i = 0; i < slides.length; i++) {
+    btn.textContent = '⏳ Slide ' + (i+1) + ' / ' + slides.length + '...';
+    await new Promise(function(resolve) {
+      (function(slideIdx) {
+      html2canvas(slides[slideIdx], {
+        width: 540, height: 540, scale: 2,
+        useCORS: true, allowTaint: true,
+        backgroundColor: null, logging: false
+      }).then(function(canvas) {
+        var link = document.createElement('a');
+        link.download = 'onpasse-carousel-' + slideNames[slideIdx] + '.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        setTimeout(resolve, 600);
+      }).catch(resolve);
+      })(i);
+    });
+  }
+  btn.classList.remove('loading');
+  btn.textContent = '✅ Téléchargés !';
+  setTimeout(function() { btn.textContent = '⬇ Tout télécharger'; }, 3000);
+}
 </script>
 </body>
 </html>
